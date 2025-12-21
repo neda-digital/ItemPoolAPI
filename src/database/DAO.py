@@ -75,7 +75,7 @@ class DAO:
             "_id": new_id,
             "stimulus_ids": task["stimulus_ids"],
             "solution_ids": task["solution_ids"],
-            "metadata": task["metadata"].model_dump(mode="json"),
+            "metadata": task["metadata"].model_dump(mode="json") if task["metadata"] else None,
         }
         tasks_col = self._get_collection(Collections.TASK)
         tasks_col.replace_one({"_id": new_id}, doc, upsert=True)

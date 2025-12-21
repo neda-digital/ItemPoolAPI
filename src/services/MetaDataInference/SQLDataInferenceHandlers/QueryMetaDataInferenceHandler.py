@@ -1,6 +1,7 @@
 from ..BaseMetaDataInferenceHandler import MetaDataInferenceHandler
 from ....models.TaskMaterials.QueryTaskMaterial import QueryTaskMaterial
-import logging
+import inspect
+
 
 from sqlglot import parse_one, Expression, exp
 from sqlglot.optimizer.qualify import qualify
@@ -13,8 +14,6 @@ from sqlglot.optimizer.scope import (
 )
 from enum import Enum, auto
 from typing import List
-import re
-
 
 class QueryMetricsHandler(MetaDataInferenceHandler):
     """
@@ -29,16 +28,17 @@ class QueryMetricsHandler(MetaDataInferenceHandler):
         query = query_material.query
         dialect = query_material.dialect
 
-        # result = self._analyzer.analyze_query(query, dialect)
-
-        return {
-            # "test": 1
+        exp_classes = {
+            class_name: 0
+            for class_name, cls in inspect.getmembers(exp, inspect.isclass)
+            if issubclass(cls, exp.Expression)
         }
-
-
-# type SchemaInformation = dict[str, str | SchemaInformation]
-# TODO: Externalize the code below into its own package => SHK/WHK FeU
-
+        
+        for node in self._analyzer.walk():
+            class_name = type(node).__name__
+            exp_classes[class_name] += 1
+        
+        return exp_classes
 
 class ScopeType(Enum):
     ROOT = auto()
@@ -50,86 +50,17 @@ class ScopeType(Enum):
     UDTF = auto()
     UNKNOWN = auto()
 
-
 class SQLAnalyzer:
     def __init__(self):
-        self._parser = parse_one
-        self._scope_handlers = {ScopeType.ROOT: self._analyze_columns}
-
-    def _substitute_newline_and_tabs(self, s: str) -> str:
-        return " ".join(s.split())
-
-    def _clean_query_string(self, query: str) -> str:
-        return self._substitute_newline_and_tabs(query)
-
-    def _extract_selected_column_string(self, query: str) -> str:
-        single_line_query = self._clean_query_string(query)
-
-        match = re.search(r"SELECT (.*?) FROM", single_line_query, flags=re.IGNORECASE)
-        if match:
-            return match.groups()[0]
-        return ""
-
-    def _qualify_and_annotate_ast(self, ast: Expression, schema_information: dict):
-        if schema_information:
-            qualified_ast = qualify(ast, schema=schema_information)
-            annotated_qualified_ast = annotate_types(
-                qualified_ast, schema=schema_information
-            )
-            return annotated_qualified_ast
-
-        return ast
-
-    def _assemble_query_scopes(self, ast: Expression):
-        return build_scope(ast)
-
-    def _determine_scope_type(self, scope: Scope) -> ScopeType:
-        if scope.is_correlated_subquery:
-            return ScopeType.CORRELATED_SUBQUERY
-        elif scope.is_cte:
-            return ScopeType.CTE
-        elif scope.is_derived_table:
-            return ScopeType.DERIVED_TABLE
-        elif scope.is_subquery:
-            return ScopeType.SUBQUERY
-        elif scope.is_udtf:
-            return ScopeType.UDTF
-        elif scope.is_union:
-            return ScopeType.UNION
-        # Check for root last. Important, as e.g. UNION or CTE could be ROOT as well.
-        # => Base-case is the SELECT-Statement. UNION or CTE might be root also,
-        elif scope.is_root:
-            return ScopeType.ROOT
-        else:
-            return ScopeType.UNKNOWN
-
-    def _iterate_query_scopes(self, scopes: List[Scope]):
-        # top_down_scopes = traverse_scope(scopes).reverse()
-        top_down_scopes = [scopes]
-        for query_scope in top_down_scopes:
-            scope_type = self._determine_scope_type(query_scope)
-            self._scope_handlers[scope_type](query_scope)
-            # query_scope.expression.sql()
-
-    def _analyze_columns(self, scope: Scope):
-        # query = ast.sql(dialect=self.dialect)
-        column_string = self._extract_selected_column_string(scope.expression)
-        column_ast = self.parser(column_string)
-
-        logging.getLogger("uvicorn.error").info("STUFF")
-        logging.getLogger().debug(column_ast.find_all(exp.AggFunc))
-
-        return column_ast.find_all(exp.AggFunc)
-
-    def analyze_query(
-        self, query: str, dialect: str = "postgres", schema_information: dict = None
-    ):
-        # cleaned_query = self._clean_query_string(query)
-        ast = self._parser(sql=query, dialect=dialect)
-        qualified_ast = self._qualify_and_annotate_ast(ast, schema_information)
-
-        query_scopes = self._assemble_query_scopes(qualified_ast)
-
-        self._iterate_query_scopes(query_scopes)
-
-        qualified_ast
+        self._ast = None
+    
+    def parse_query(self, query: str, dialect: str = "postgres"):
+        """Parse SQL query and store AST"""
+        self._ast = parse_one(query, dialect=dialect)
+        return self._ast
+    
+    def walk(self):
+        """Walk through all nodes in the AST"""
+        if self._ast is None:
+            return []
+        return self._ast.walk()
