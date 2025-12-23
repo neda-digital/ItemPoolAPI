@@ -1,19 +1,13 @@
 from ..BaseMetaDataInferenceHandler import MetaDataInferenceHandler
 from ....models.TaskMaterials.QueryTaskMaterial import QueryTaskMaterial
 import inspect
+import logging
+import json
 
+from sqlglot import parse_one, exp, Expression
 
-from sqlglot import parse_one, Expression, exp
-from sqlglot.optimizer.qualify import qualify
-from sqlglot.optimizer.annotate_types import annotate_types
-from sqlglot.optimizer.scope import (
-    build_scope,
-    find_all_in_scope,
-    traverse_scope,
-    Scope,
-)
-from enum import Enum, auto
-from typing import List
+logger = logging.getLogger("uvicorn.error")
+
 
 class QueryMetricsHandler(MetaDataInferenceHandler):
     """
@@ -33,34 +27,31 @@ class QueryMetricsHandler(MetaDataInferenceHandler):
             for class_name, cls in inspect.getmembers(exp, inspect.isclass)
             if issubclass(cls, exp.Expression)
         }
-        
-        for node in self._analyzer.walk():
+
+        ast = self._analyzer.parse_query(query, dialect)
+
+        for node in self._analyzer.walk(ast):
             class_name = type(node).__name__
             exp_classes[class_name] += 1
-        
-        return exp_classes
 
-class ScopeType(Enum):
-    ROOT = auto()
-    SUBQUERY = auto()
-    CORRELATED_SUBQUERY = auto()
-    DERIVED_TABLE = auto()
-    CTE = auto()
-    UNION = auto()
-    UDTF = auto()
-    UNKNOWN = auto()
+        registered_exp_classes = {e: v for [e, v] in exp_classes.items() if v > 0}
+
+        logger.log(
+            msg=json.dumps(registered_exp_classes),
+            level=logging.DEBUG,
+        )
+
+        return registered_exp_classes
+
 
 class SQLAnalyzer:
-    def __init__(self):
-        self._ast = None
-    
     def parse_query(self, query: str, dialect: str = "postgres"):
         """Parse SQL query and store AST"""
         self._ast = parse_one(query, dialect=dialect)
         return self._ast
-    
-    def walk(self):
+
+    def walk(self, ast: Expression):
         """Walk through all nodes in the AST"""
-        if self._ast is None:
+        if ast is None:
             return []
-        return self._ast.walk()
+        return ast.walk()
