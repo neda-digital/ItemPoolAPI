@@ -9,12 +9,13 @@ GET http://127.0.0.1:8000/availableTaskTypes
 POST http://127.0.0.1:8000/registerTaskMaterial
 
 {
-    "type": "text",
-    "material_information": {
-        "text": "Hello World!",
-        "metadata": {}
-    }
-}
+                "type": "query",
+                "material_information": {
+                    "query": "SELECT a, b, sum(a) FROM foo JOIN bar WHERE a > b;",
+                    "dialect": "postgres",
+                    "metadata": {}
+                }
+            }
 
 ###
 POST http://127.0.0.1:8000/registerTask
