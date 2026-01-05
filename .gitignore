@@ -1,4 +1,6 @@
 __pycache__/main.cpython-312.pyc
+**/__pycache__/**/*.pyc
 __pycache__/
 .env
 .vscode
+.coverage

@@ -33,7 +33,17 @@
 
 ### **Unit Tests**
 
-TBD
+Pytest is used for unit testing. Run the following cmd to execute the tests.
+
+```bash
+uv run pytest
+```
+
+Or the following to create a coverage report.
+
+```bash
+uv run pytest --cov=.
+```
 
 ## Debugger (VSCode Example)
 
