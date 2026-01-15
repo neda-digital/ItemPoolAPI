@@ -2,6 +2,7 @@ from ..src.services.MetaDataInference.SQLDataInferenceHandlers.QueryMetaDataInfe
     QueryMetricsHandler,
 )
 from ..src.models.TaskMaterials.QueryTaskMaterial import QueryTaskMaterial
+import pytest
 
 query_metrics_handler = QueryMetricsHandler()
 
@@ -119,12 +120,12 @@ def test_capitalization():
         "Literal": 1,
     }
 
-# Liefert Fehler:  "self.raise_error("Invalid expression / Unexpected token")"
-# def test_invalid_query():
-#     material = QueryTaskMaterial(
-#         query="SELECT FROM WHERE JOIN",
-#         dialect="postgres",
-#         metadata=None,
-#     )
-#     metadata = query_metrics_handler.infer_metadata(query_material=material)
-#     assert isinstance(metadata, dict)
+def test_invalid_query():
+    material = QueryTaskMaterial(
+        query="SELECT FROM WHERE JOIN",
+        dialect="postgres",
+        metadata=None,
+    )
+    with pytest.raises(Exception) as exceptionInfo:
+        query_metrics_handler.infer_metadata(query_material=material)
+    assert "Expected table name" in str(exceptionInfo.value)
