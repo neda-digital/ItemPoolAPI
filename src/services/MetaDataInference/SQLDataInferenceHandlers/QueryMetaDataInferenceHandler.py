@@ -14,6 +14,23 @@ class QueryMetricsHandler(MetaDataInferenceHandler):
     Currently wraps the SQLGlot-library and uses its parser to calculate basic counting metrics.
     """
 
+    """
+    Weight value for all metrics 
+    The weight value is actually not used to calculate the final score for the query.
+    """
+    WEIGHTS = {
+        "Join": 0.25,
+        "Table": 0.3,
+        "Subquery": 0.2,
+        "Column": 0.1,
+        "Alias": 0.1,
+        "Star": 0.1,
+        "Literal": 0.1,
+        "Identifier": 0.15,
+        "Placeholder": 0.15,
+        "Value": 0.15
+    }
+
     def __init__(self):
         super().__init__()
         self._analyzer = SQLAnalyzer()
