@@ -57,8 +57,22 @@ class QueryMetricsHandler(MetaDataInferenceHandler):
             msg=json.dumps(registered_exp_classes),
             level=logging.DEBUG,
         )
+        
+        complexity = self.calculate_weights(registered_exp_classes)
+        logger.info(f"Complexity Score: {complexity}")
 
         return registered_exp_classes
+    
+    def calculate_score(self, metrics: dict):
+        """
+        Calculate weighted score for the query based on the metrics and predefined weights
+        """
+        total_score = 0
+        for metric, count in metrics.items():
+            weight = self.WEIGHTS.get(metric, 0.05) # Default weight for unregistered metrics
+            total_score += weight * count
+        total_score = total_score / 10 # Normalize score
+        return total_score
 
 
 class SQLAnalyzer:

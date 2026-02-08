@@ -69,7 +69,7 @@ def test_grouping():
 
 def test_joins():
     material = QueryTaskMaterial(
-        query = "SELECT a.id,b-vaö FROM table_a AS a LEFT JOIN table_b AS b ON a.id = b.a_id;",
+        query = "SELECT a.id,b-va FROM table_a AS a LEFT JOIN table_b AS b ON a.id = b.a_id;",
         dialect = "postgres",
         metadata = None,
     )
@@ -129,3 +129,14 @@ def test_invalid_query():
     with pytest.raises(Exception) as exceptionInfo:
         query_metrics_handler.infer_metadata(query_material=material)
     assert "Expected table name" in str(exceptionInfo.value)
+
+def test_complexity_value():
+    mock_metrics = {
+        "Column": 5,
+        "Table": 2,
+        "Join": 1,
+        "Select": 1
+    }
+    score = query_metrics_handler.calculate_weights(mock_metrics)
+
+    assert score == pytest.approx(0.14, abs=1e-3)
